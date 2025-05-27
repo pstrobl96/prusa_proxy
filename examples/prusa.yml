@@ -1,0 +1,6 @@
+printers:
+  - address: <ip_address_of_printer>
+    username: maker
+    password: <password>
+    name: <your_printer_name> # it's optional, only showed in Grafana dashboard
+    type: MINI # or MK35 / MK39 / MK4 / XL / IX / Core One - it's optional, only showed in Grafana dashboard
