@@ -95,6 +95,47 @@ func getDigestRequest(url string, username string, password string) ([]byte, err
 	return result, nil
 }
 
+func deleteDigestRequest(url string, username string, password string) (*http.Response, error) {
+	client := &http.Client{
+		Transport: &digest.Transport{
+			Username: username,
+			Password: password,
+		},
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+
+	if err != nil {
+		log.Fatalf("Error creating DELETE request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		log.Fatalf("Error sending DELETE request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("Error reading response body: %v", err)
+	}
+
+	log.Printf("Response Status for DELETE: %s\n", resp.Status)
+	log.Printf("Response Body for DELETE: %s\n", body)
+
+	// DELETE requests typically return 200 OK or 204 No Content for success.
+	// You might adjust this success check based on your API's expected behavior.
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		log.Printf("DELETE request with Digest Authentication successful!")
+	} else {
+		log.Printf("DELETE request with Digest Authentication failed or unexpected status code.")
+	}
+	client.CloseIdleConnections()
+
+	return resp, err
+}
+
 type status struct {
 	Job struct {
 		ID            float64 `json:"id"`
