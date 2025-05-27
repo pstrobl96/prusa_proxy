@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	configFile    = kingpin.Flag("config", "Configuration file for prusa_exporter.").Default("./prusa.yml").ExistingFile()
-	listenPort    = kingpin.Flag("port", "Address where to expose port for gathering metrics. - format <address>:<port>").Default("31100").String()
+	configFile    = kingpin.Flag("config", "Configuration file for prusa_proxy.").Default("./prusa.yml").ExistingFile()
+	listenPort    = kingpin.Flag("port", "Address where to expose port for gathering metrics.").Default("31100").String()
 	configuration Config
 )
 

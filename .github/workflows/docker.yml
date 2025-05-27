@@ -64,7 +64,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: pubeldev/prusa_exporter
+          images: pubeldev/prusa_proxy
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
