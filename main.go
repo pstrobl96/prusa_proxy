@@ -62,9 +62,6 @@ func getNecessities(ip string) (string, string, string, error) {
 }
 
 func getOperationURL(ip string, jobID string, operation string) (string, error) {
-	if operation != "pause" && operation != "resume" {
-		return "", fmt.Errorf("invalid operation: %s, must be 'pause' or 'resume'", operation)
-	}
 	return "http://" + ip + "/api/v1/job/" + jobID + "/" + operation, nil
 }
 
@@ -135,6 +132,39 @@ func resumePrinterHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func stopPrinterHandler(w http.ResponseWriter, r *http.Request) {
+	var req request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	username, password, jobID, err := getNecessities(req.IP)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	url, err := getOperationURL(req.IP, jobID, "")
+	if err != nil {
+		http.Error(w, "Failed to get operation URL: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := deleteDigestRequest(url, username, password)
+
+	if err != nil {
+		http.Error(w, "Failed to pause the printer: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		http.Error(w, "Failed to pause the printer: "+resp.Status, resp.StatusCode)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
 func main() {
 	kingpin.Parse()
 	kingpin.Version("prusa_proxy v0.1.0")
@@ -157,6 +187,7 @@ func main() {
 	router.HandleFunc("/", homepageHandler).Methods("GET")
 	router.HandleFunc("/pause", pausePrinterHandler).Methods("POST")
 	router.HandleFunc("/resume", resumePrinterHandler).Methods("POST")
+	router.HandleFunc("/stop", stopPrinterHandler).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":"+*listenPort, router))
 }
