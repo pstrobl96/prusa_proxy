@@ -165,9 +165,88 @@ func stopPrinterHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func pauseAllPrinterHandler(w http.ResponseWriter, r *http.Request) {
+	for _, printer := range configuration.Printers {
+		username, password, jobID, err := getNecessities(printer.Address)
+		if err != nil {
+			w.Write([]byte("Error getting configuration for printer " + printer.Address + ": " + err.Error() + "\n"))
+			continue
+		}
+		url, err := getOperationURL(printer.Address, jobID, "pause")
+		if err != nil {
+			w.Write([]byte("Failed to get operation URL for printer " + printer.Address + ": " + err.Error() + "\n"))
+			continue
+		}
+		resp, err := putDigestRequest(url, username, password)
+		if err != nil {
+			w.Write([]byte("Failed to pause the printer: " + err.Error() + "\n"))
+			continue
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			w.Write([]byte("Failed to pause the printer: " + resp.Status + "\n"))
+			continue
+		}
+		w.Write([]byte("Printer " + printer.Address + " paused successfully.\n"))
+	}
+}
+
+func resumeAllPrinterHandler(w http.ResponseWriter, r *http.Request) {
+	for _, printer := range configuration.Printers {
+		username, password, jobID, err := getNecessities(printer.Address)
+		if err != nil {
+			w.Write([]byte("Error getting configuration for printer " + printer.Address + ": " + err.Error() + "\n"))
+			continue
+		}
+		url, err := getOperationURL(printer.Address, jobID, "resume")
+		if err != nil {
+			w.Write([]byte("Failed to get operation URL for printer " + printer.Address + ": " + err.Error() + "\n"))
+			continue
+		}
+		resp, err := putDigestRequest(url, username, password)
+		if err != nil {
+			w.Write([]byte("Failed to resume the printer: " + err.Error() + "\n"))
+			continue
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			w.Write([]byte("Failed to resume the printer: " + resp.Status + "\n"))
+			continue
+		}
+		w.Write([]byte("Printer " + printer.Address + " resumed successfully.\n"))
+	}
+}
+
+func stopAllPrinterHandler(w http.ResponseWriter, r *http.Request) {
+	for _, printer := range configuration.Printers {
+		username, password, jobID, err := getNecessities(printer.Address)
+		if err != nil {
+			w.Write([]byte("Error getting configuration for printer " + printer.Address + ": " + err.Error() + "\n"))
+			continue
+		}
+		url, err := getOperationURL(printer.Address, jobID, "")
+		if err != nil {
+			w.Write([]byte("Failed to get operation URL for printer " + printer.Address + ": " + err.Error() + "\n"))
+			continue
+		}
+		resp, err := deleteDigestRequest(url, username, password)
+		if err != nil {
+			w.Write([]byte("Failed to stop the printer: " + err.Error() + "\n"))
+			continue
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			w.Write([]byte("Failed to stop the printer: " + resp.Status + "\n"))
+			continue
+		}
+		w.Write([]byte("Printer " + printer.Address + " stopped successfully.\n"))
+	}
+
+}
+
 func main() {
 	kingpin.Parse()
-	kingpin.Version("prusa_proxy v0.1.0")
 	log.Println("Starting prusa_proxy with configuration file:", *configFile)
 	log.Println("Listening on port: localhost:" + *listenPort)
 	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
@@ -188,6 +267,8 @@ func main() {
 	router.HandleFunc("/pause", pausePrinterHandler).Methods("POST")
 	router.HandleFunc("/resume", resumePrinterHandler).Methods("POST")
 	router.HandleFunc("/stop", stopPrinterHandler).Methods("POST")
-
+	router.HandleFunc("/all/pause", pauseAllPrinterHandler).Methods("POST")
+	router.HandleFunc("/all/resume", resumeAllPrinterHandler).Methods("POST")
+	router.HandleFunc("/all/stop", stopAllPrinterHandler).Methods("POST")
 	log.Fatal(http.ListenAndServe(":"+*listenPort, router))
 }
