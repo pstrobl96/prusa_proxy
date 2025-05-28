@@ -166,7 +166,7 @@ func stopPrinterHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func pauseAllPrinterHandler(w http.ResponseWriter, r *http.Request) {
+func pauseAllPrintersHandler(w http.ResponseWriter, r *http.Request) {
 	for _, printer := range configuration.Printers {
 		username, password, jobID, err := getNecessities(printer.Address)
 		if err != nil {
@@ -192,7 +192,7 @@ func pauseAllPrinterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func resumeAllPrinterHandler(w http.ResponseWriter, r *http.Request) {
+func resumeAllPrintersHandler(w http.ResponseWriter, r *http.Request) {
 	for _, printer := range configuration.Printers {
 		username, password, jobID, err := getNecessities(printer.Address)
 		if err != nil {
@@ -218,7 +218,7 @@ func resumeAllPrinterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func stopAllPrinterHandler(w http.ResponseWriter, r *http.Request) {
+func stopAllPrintersHandler(w http.ResponseWriter, r *http.Request) {
 	for _, printer := range configuration.Printers {
 		username, password, jobID, err := getNecessities(printer.Address)
 		if err != nil {
@@ -267,8 +267,8 @@ func main() {
 	router.HandleFunc("/pause", pausePrinterHandler).Methods("POST")
 	router.HandleFunc("/resume", resumePrinterHandler).Methods("POST")
 	router.HandleFunc("/stop", stopPrinterHandler).Methods("POST")
-	router.HandleFunc("/all/pause", pauseAllPrinterHandler).Methods("POST")
-	router.HandleFunc("/all/resume", resumeAllPrinterHandler).Methods("POST")
-	router.HandleFunc("/all/stop", stopAllPrinterHandler).Methods("POST")
+	router.HandleFunc("/all/pause", pauseAllPrintersHandler).Methods("POST")
+	router.HandleFunc("/all/resume", resumeAllPrintersHandler).Methods("POST")
+	router.HandleFunc("/all/stop", stopAllPrintersHandler).Methods("POST")
 	log.Fatal(http.ListenAndServe(":"+*listenPort, router))
 }
