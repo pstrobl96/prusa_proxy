@@ -219,15 +219,15 @@ func resumeAllPrintersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func stopAllPrintersHandler(w http.ResponseWriter, r *http.Request) {
-	for _, printer := range configuration.Printers {
-		username, password, jobID, err := getNecessities(printer.Address)
+	for i := len(configuration.Printers) - 1; i >= 0; i-- {
+		username, password, jobID, err := getNecessities(configuration.Printers[i].Address)
 		if err != nil {
-			w.Write([]byte("Error getting configuration for printer " + printer.Address + ": " + err.Error() + "\n"))
+			w.Write([]byte("Error getting configuration for printer " + configuration.Printers[i].Address + ": " + err.Error() + "\n"))
 			continue
 		}
-		url, err := getOperationURL(printer.Address, jobID, "")
+		url, err := getOperationURL(configuration.Printers[i].Address, jobID, "")
 		if err != nil {
-			w.Write([]byte("Failed to get operation URL for printer " + printer.Address + ": " + err.Error() + "\n"))
+			w.Write([]byte("Failed to get operation URL for printer " + configuration.Printers[i].Address + ": " + err.Error() + "\n"))
 			continue
 		}
 		resp, err := deleteDigestRequest(url, username, password)
@@ -240,7 +240,17 @@ func stopAllPrintersHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Failed to stop the printer: " + resp.Status + "\n"))
 			continue
 		}
-		w.Write([]byte("Printer " + printer.Address + " stopped successfully.\n"))
+
+		getJobID(configuration.Printers[i].Address, username, password) // Ensure the job is cleared
+
+		if jobID != "" {
+			w.Write([]byte(configuration.Printers[i].Address + " - still not stopped, trying again" + ".\n"))
+			i = i - 1
+		} else {
+			w.Write([]byte("No job found for printer " + configuration.Printers[i].Address + ".\n"))
+		}
+
+		w.Write([]byte("Printer " + configuration.Printers[i].Address + " stopped successfully.\n"))
 	}
 
 }
