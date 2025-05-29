@@ -245,5 +245,12 @@ func main() {
 	router.HandleFunc("/all/resume", resumeAllPrintersHandler).Methods("POST")
 	router.HandleFunc("/all/stop", stopAllPrintersHandler).Methods("POST")
 	router.HandleFunc("/metrics", exportState).Methods("GET")
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	}).Methods("GET")
+	router.HandleFunc("/upload", uploadHandler).Methods("POST")
+	router.HandleFunc("/upload", uploadPage).Methods("GET")
+
 	log.Fatal(http.ListenAndServe(":"+*listenPort, router))
 }

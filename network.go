@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -201,4 +202,119 @@ type status struct {
 		FanHotend    float64 `json:"fan_hotend"`
 		FanPrint     float64 `json:"fan_print"`
 	} `json:"printer"`
+}
+
+// UploadFileToMemory reads a file from an HTTP request and returns its content as a byte slice.
+func UploadFileToMemory(r *http.Request) ([]byte, string, error) {
+	// ParseMultipartForm parses a multipart form, including file uploads.
+	// The argument is the maximum amount of memory to use for parsing the form data.
+	// Files larger than this will be stored on disk.
+	err := r.ParseMultipartForm(10 << 20) // 10 MB limit for form data in memory
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to parse multipart form: %w", err)
+	}
+
+	// Get the file from the request. "file" is the name of the input field in the HTML form.
+	file, handler, err := r.FormFile("file")
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get file from form: %w", err)
+	}
+	defer file.Close() // Ensure the file is closed after processing
+
+	// Read the file content into a byte slice.
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read file content: %w", err)
+	}
+
+	return fileBytes, handler.Filename, nil
+}
+
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST requests are allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	fileContent, filename, err := UploadFileToMemory(r)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error uploading file: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Example: Upload the file to the printer via Digest Auth
+	printerURL := "http://192.168.20.29/api/v1/files/usb//" + filename // Replace <PRINTER_IP> as needed
+	username := "maker"                                                // Replace with actual username
+	password := "ozhLHCHFf9aoRr6"                                      // Replace with actual password
+
+	client := &http.Client{
+		Transport: &digest.Transport{
+			Username: username,
+			Password: password,
+		},
+	}
+
+	req, err := http.NewRequest(http.MethodPut, printerURL, bytes.NewReader(fileContent))
+	if err != nil {
+		http.Error(w, "Failed to create upload request: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Content-Type", "application/gcode+binary")
+	req.Header.Set("Overwrite", "?1")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "Failed to upload file to printer: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		http.Error(w, "Printer upload failed: "+string(body), resp.StatusCode)
+		return
+	}
+
+	w.Write([]byte("File uploaded to printer successfully!"))
+
+}
+
+func uploadPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>Upload File</title>
+		</head>
+		<body>
+			<h1>Upload File</h1>
+			<form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data" target="hidden_iframe">
+				<div id="file">
+		<input type="file" id="fileInput" name="file" accept=".gcode, .bgcode" required></div>
+				<input type="submit" value="Upload">
+			</form>
+			<iframe name="hidden_iframe" style="display:none;"></iframe>
+			<div id="result"></div>
+			<script>
+				document.getElementById('uploadForm').onsubmit = function() {
+					var fileInput = document.getElementById('fileInput');
+					var file = fileInput.files[0];
+					if (!file) {
+						document.getElementById('result').innerText = "No file selected.";
+						return false;
+					}
+					var size = file.size;
+					var kbps = 200 * 1024; // assume 200kbps
+					var seconds = Math.ceil(size / kbps);
+					document.getElementById('result').innerText = "Uploading... (Estimated time: " + seconds + "s)";
+					setTimeout(function() {
+						document.getElementById('result').innerText = "Upload to Grafana complete (check printer for result).";
+					}, seconds * 1000);
+					return true;
+				};
+			</script>
+		</body>
+		</html>
+	`)
 }
