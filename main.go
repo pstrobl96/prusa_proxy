@@ -11,6 +11,7 @@ import (
 
 	"github.com/alecthomas/kingpin"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 )
 
 var (
@@ -97,6 +98,11 @@ func handlePrinterOperation(w http.ResponseWriter, r *http.Request, operation st
 		http.Error(w, "Failed to "+opName+" the printer: "+resp.Status, resp.StatusCode)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Referrer-Policy", "unsafe-url")
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -252,5 +258,17 @@ func main() {
 	router.HandleFunc("/upload", uploadHandler).Methods("POST")
 	router.HandleFunc("/upload", uploadPage).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(":"+*listenPort, router))
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		ExposedHeaders:   []string{"Content-Length"},
+		AllowOriginFunc: func(origin string) bool {
+			// Allow all origins
+			return true
+		},
+	})
+
+	log.Fatal(http.ListenAndServe(":"+*listenPort, c.Handler(router)))
 }
