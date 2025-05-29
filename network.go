@@ -14,6 +14,50 @@ type request struct {
 	IP string `json:"ip"`
 }
 
+// Job is a struct that contains data about print job
+type Job struct {
+	State string `json:"state"`
+	Job   struct {
+		EstimatedPrintTime float64 `json:"estimatedPrintTime"`
+		File               struct {
+			Name    string  `json:"name"`
+			Path    string  `json:"path"`
+			Display string  `json:"display"`
+			Size    float64 `json:"size"`
+			Origin  string  `json:"origin"`
+			Date    float64 `json:"date"`
+		} `json:"file"`
+		AveragePrintTime any    `json:"averagePrintTime"`
+		LastPrintTime    any    `json:"lastPrintTime"`
+		Filament         any    `json:"filament"`
+		User             string `json:"user"`
+	} `json:"job"`
+	Progress struct {
+		PrintTimeLeft       float64 `json:"printTimeLeft"`
+		Completion          float64 `json:"completion"`
+		PrintTime           float64 `json:"printTime"`
+		Filepos             float64 `json:"filepos"`
+		PrintTimeLeftOrigin string  `json:"printTimeLeftOrigin"`
+		PosZMm              float64 `json:"pos_z_mm"`
+		PrintSpeed          float64 `json:"printSpeed"`
+		FlowFactor          float64 `json:"flow_factor"`
+	} `json:"progress"`
+}
+
+// GetJob is used to get the printer's job API endpoint
+func getState(url string, username string, password string) (string, error) {
+	var job Job
+	response, err := getDigestRequest("http://"+url+"/api/job", username, password)
+
+	if err != nil {
+		return "", err
+	}
+
+	err = json.Unmarshal(response, &job)
+
+	return job.State, err
+}
+
 // GetStatus is used to get Buddy status endpoint
 func getStatus(url string, username string, password string) (status, error) {
 	var status status
